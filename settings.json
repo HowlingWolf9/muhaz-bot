@@ -7,9 +7,9 @@
     "nodes": {
         "DEFAULT": {
             "host": "${LAVALINK_HOST}",
-            "port": ${LAVALINK_PORT},
+            "port": "${LAVALINK_PORT}",
             "password": "${LAVALINK_PASSWORD}",
-            "secure": ${LAVALINK_SECURE},
+            "secure": "${LAVALINK_SECURE}",
             "identifier": "DEFAULT",
             "yt_ratelimit": {
                 "tokens": [],
@@ -38,7 +38,7 @@
         "max-history": 30
     },
     "bot_access_user": [],
-    "embed_color":"0xb3b3b3",
+    "embed_color": "0xb3b3b3",
     "default_max_queue": 1000,
     "lyrics_platform": "lrclib",
     "ipc_client": {

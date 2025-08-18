@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: muhaz
+    env: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    autoDeploy: true
+    envVars:
+      - key: TOKEN
+        sync: false
+      - key: CLIENT_ID
+        sync: false
+      - key: PREFIX
+        value: "!"
+      - key: OWNER_ID
+        sync: false
+      - key: LAVALINK_HOST
+        value: "lavalink.mariliun.ml"
+      - key: LAVALINK_PORT
+        value: "443"
+      - key: LAVALINK_PASSWORD
+        value: "youshallnotpass"
+      - key: LAVALINK_SECURE
+        value: "true"
+      - key: MONGODB_URL
+        sync: false
+      - key: MONGODB_NAME
+        value: "vocard"
+      - key: GENIUS_TOKEN
+        sync: false
+      - key: IPC_PASSWORD
+        sync: false

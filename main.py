@@ -31,6 +31,7 @@ import voicelink
 import function as func
 
 from discord.ext import commands
+from discord import app_commands
 from ipc import IPCClient
 from motor.motor_asyncio import AsyncIOMotorClient
 from logging.handlers import TimedRotatingFileHandler
@@ -219,7 +220,7 @@ intents.voice_states = True
 bot = Vocard(
     command_prefix=get_prefix,
     help_command=None,
-    tree_cls=commands.CommandTree,
+    tree_cls=discord.app_commands.CommandTree,
     chunk_guilds_at_startup=False,
     activity=discord.Activity(type=discord.ActivityType.listening, name="Starting..."),
     case_insensitive=True,

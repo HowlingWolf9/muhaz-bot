@@ -175,5 +175,4 @@ cython_debug/
 .pypirc
 
 # Custom file
-settings.json
 logs

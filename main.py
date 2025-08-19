@@ -40,6 +40,8 @@ import json
 import asyncio
 from aiohttp import web
 
+from keep_alive import keep_alive
+
 # -------------------------------
 # Load settings.json and replace ${ENV_VAR}
 # -------------------------------
@@ -65,6 +67,8 @@ def load_settings(path: str):
 
 func.settings = Settings(load_settings("settings.json"))
 
+
+keep_alive()
 # -------------------------------
 # Setup logging
 # -------------------------------
@@ -270,3 +274,4 @@ if __name__ == "__main__":
         asyncio.run(main())
     except Exception as e:
         func.logger.error(f"Fatal error in main loop: {e}", exc_info=True)
+

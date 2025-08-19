@@ -246,16 +246,27 @@ async def start_web_server():
     func.logger.info(f"Web server running on port {port}")
 
 # -------------------------------
-# Run bot + web server concurrently
+# Run bot + web server with auto-restart
 # -------------------------------
 if __name__ == "__main__":
     update.check_version(with_msg=True)
 
     async def main():
         await start_web_server()
-        await bot.start(func.settings.token)
+
+        while True:
+            try:
+                func.logger.info("Starting Discord bot...")
+                await bot.start(func.settings.token)
+            except KeyboardInterrupt:
+                func.logger.info("Bot stopped manually.")
+                break
+            except Exception as e:
+                func.logger.error(f"Bot crashed with error: {e}", exc_info=True)
+                func.logger.info("Restarting bot in 5 seconds...")
+                await asyncio.sleep(5)
 
     try:
         asyncio.run(main())
-    except KeyboardInterrupt:
-        func.logger.info("Bot stopped manually.")
+    except Exception as e:
+        func.logger.error(f"Fatal error in main loop: {e}", exc_info=True)

@@ -24,14 +24,12 @@ SOFTWARE.
 import discord
 import sys
 import os
-import asyncio
 import aiohttp
 import update
 import logging
 import voicelink
 import function as func
 
-from aiohttp import web
 from discord.ext import commands
 from discord import app_commands
 from ipc import IPCClient
@@ -39,6 +37,8 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from logging.handlers import TimedRotatingFileHandler
 from addons import Settings
 import json
+import asyncio
+from aiohttp import web
 
 # -------------------------------
 # Load settings.json and replace ${ENV_VAR}
@@ -229,17 +229,33 @@ bot = Vocard(
     intents=intents
 )
 
-async def handle(request):
-    return web.Response(text="Bot running!")
-
-app = web.Application()
-app.add_routes([web.get("/", handle)])
-
-# Run the web server in background
-asyncio.create_task(web._run_app(app, host="0.0.0.0", port=int(os.environ.get("PORT", 10000))))
 # -------------------------------
-# Run bot
+# Minimal web server for Render
+# -------------------------------
+async def handle(request):
+    return web.Response(text="Bot is running!")
+
+async def start_web_server():
+    port = int(os.environ.get("PORT", 10000))
+    app = web.Application()
+    app.add_routes([web.get("/", handle)])
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    func.logger.info(f"Web server running on port {port}")
+
+# -------------------------------
+# Run bot + web server concurrently
 # -------------------------------
 if __name__ == "__main__":
     update.check_version(with_msg=True)
-    bot.run(func.settings.token, root_logger=True)
+
+    async def main():
+        await start_web_server()
+        await bot.start(func.settings.token)
+
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        func.logger.info("Bot stopped manually.")

@@ -24,12 +24,14 @@ SOFTWARE.
 import discord
 import sys
 import os
+import asyncio
 import aiohttp
 import update
 import logging
 import voicelink
 import function as func
 
+from aiohttp import web
 from discord.ext import commands
 from discord import app_commands
 from ipc import IPCClient
@@ -227,6 +229,14 @@ bot = Vocard(
     intents=intents
 )
 
+async def handle(request):
+    return web.Response(text="Bot running!")
+
+app = web.Application()
+app.add_routes([web.get("/", handle)])
+
+# Run the web server in background
+asyncio.create_task(web._run_app(app, host="0.0.0.0", port=int(os.environ.get("PORT", 10000))))
 # -------------------------------
 # Run bot
 # -------------------------------

@@ -246,29 +246,13 @@ async def start_web_server():
     func.logger.info(f"Web server running on port {port}")
 
 # -------------------------------
-# Run bot + web server with auto-restart + self-ping keep-alive
+# Run bot + web server with auto-restart
 # -------------------------------
 if __name__ == "__main__":
     update.check_version(with_msg=True)
 
-    async def keep_alive_loop():
-        """Periodically ping our own web server to prevent Render free tier from idling out."""
-        import aiohttp
-        import os
-        url = f"http://localhost:{os.environ.get('PORT', 10000)}"
-        await asyncio.sleep(10)  # wait until server starts
-        while True:
-            try:
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(url) as resp:
-                        func.logger.info(f"Keep-alive ping -> {url} [{resp.status}]")
-            except Exception as e:
-                func.logger.error(f"Keep-alive ping failed: {e}")
-            await asyncio.sleep(300)  # ping every 5 minutes
-
     async def main():
         await start_web_server()
-        asyncio.create_task(keep_alive_loop())
 
         while True:
             try:

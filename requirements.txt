@@ -7,3 +7,4 @@ humanize==4.0.0
 beautifulsoup4==4.11.1
 psutil==5.9.8
 aiohttp==3.11.12
+Flask==3.1.0

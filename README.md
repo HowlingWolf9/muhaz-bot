@@ -1,9 +1,5 @@
-<a href="https://discord.gg/wRCgB7vBQv">
-    <img src="https://img.shields.io/discord/811542332678996008?color=7289DA&label=Support&logo=discord&style=for-the-badge" alt="Discord">
-</a>
-
-# Vocard Bot
-Vocard is a highly customizable Discord music bot, designed to deliver a user-friendly experience. It offers support for a wide range of streaming platforms including Youtube, Soundcloud, Spotify, Twitch, and more.
+# Muhaz-Bot
+Muhaz-bot is a highly customizable Discord music bot,forked from Vocard By ChocoMeow designed to deliver a user-friendly experience. It offers support for a wide range of streaming platforms including Youtube, Soundcloud, Spotify, Twitch, and more.This forked version is specially made to work on Render's free tier service.
 
 ## Features
 * Fast song loading
@@ -25,12 +21,11 @@ Vocard is a highly customizable Discord music bot, designed to deliver a user-fr
 ![features](https://github.com/user-attachments/assets/2a1baf75-d1c8-41d1-a66f-7011e96d5feb)
 
 ## Requirements
-* [Python 3.11+](https://www.python.org/downloads/)
-* [Lavalink Server (Requires 4.0.0+)](https://github.com/freyacodes/Lavalink)
+* Render Free Tier Account
+* MongoDB Atlas
+* Uptimerobot
 
 ## Setup
 Please see the [Setup Page](https://docs.vocard.xyz) in the docs to run this bot yourself!
 
-## Need Help?
-Join the [Vocard Support Discord](https://discord.gg/wRCgB7vBQv) for help or questions.
 

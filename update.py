@@ -31,11 +31,10 @@ import subprocess
 from io import BytesIO
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-__version__ = "v2.7.1"
+__version__ = "v2.7.2"
 
 # URLs for update and migration
 PYTHON_CMD_NAME = os.path.basename(sys.executable)
-print(PYTHON_CMD_NAME)
 GITHUB_API_URL = "https://api.github.com/repos/ChocoMeow/Vocard/releases/latest"
 VOCARD_URL = "https://github.com/ChocoMeow/Vocard/archive/"
 MIGRATION_SCRIPT_URL = f"https://raw.githubusercontent.com/ChocoMeow/Vocard-Magration/main/{__version__}.py"

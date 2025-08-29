@@ -21,6 +21,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+import os
+
+from dotenv import load_dotenv
 from typing import (
     Dict,
     List,
@@ -28,13 +31,15 @@ from typing import (
     Union
 )
 
+load_dotenv()
+
 class Settings:
     def __init__(self, settings: Dict) -> None:
-        self.token: str = settings.get("token")
-        self.client_id: int = int(settings.get("client_id", 0))
-        self.genius_token: str = settings.get("genius_token")
-        self.mongodb_url: str = settings.get("mongodb_url")
-        self.mongodb_name: str = settings.get("mongodb_name")
+        self.token: str = settings.get("token") or os.getenv("TOKEN")
+        self.client_id: int = int(settings.get("client_id", 0)) or int(os.getenv("CLIENT_ID"))
+        self.genius_token: str = settings.get("genius_token") or os.getenv("GENIUS_TOKEN")
+        self.mongodb_url: str = settings.get("mongodb_url") or os.getenv("MONGODB_URL")
+        self.mongodb_name: str = settings.get("mongodb_name") or os.getenv("MONGODB_NAME")
         
         self.invite_link: str = "https://discord.gg/wRCgB7vBQv"
         self.nodes: Dict[str, Dict[str, Union[str, int, bool]]] = settings.get("nodes", {})

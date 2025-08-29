@@ -113,7 +113,7 @@ class Node:
         self._players: Dict[int, Player] = {}
         self._info: Optional[NodeInfo] = None
         
-        self.yt_ratelimit: Optional[YTRatelimit] = STRATEGY.get(yt_ratelimit.get("strategy"))(self, yt_ratelimit) if yt_ratelimit else None
+        self.yt_ratelimit: Optional[YTRatelimit] = STRATEGY.get(yt_ratelimit.get("strategy"))(self, yt_ratelimit) if yt_ratelimit and yt_ratelimit.get("tokens") else None
 
         self._bot.add_listener(self._update_handler, "on_socket_response")
 
@@ -399,6 +399,9 @@ class Node:
             return []
         
         tracks = await self.get_tracks(query=query, requester=self.bot.user)
+        if not track:
+            return []
+        
         if isinstance(tracks, Playlist):
             tracks = tracks.tracks
 

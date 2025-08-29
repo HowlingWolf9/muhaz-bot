@@ -51,8 +51,8 @@ from .exceptions import VoicelinkException, FilterInvalidArgument, TrackInvalidP
 from .filters import Filter, Filters
 from .objects import Track, Playlist
 from .pool import Node, NodePool
-from .queue import Queue, FairQueue
 from .placeholders import Placeholders, build_embed
+from .queue import Queue, QUEUE_TYPES
 from random import shuffle, choice
 
 async def connect_channel(ctx: Union[commands.Context, Interaction], channel: VoiceChannel = None):
@@ -115,7 +115,10 @@ class Player(VoiceProtocol):
         self.settings: dict = settings
         self.joinTime: float = round(time.time())
         self._volume: int = self.settings.get('volume', 100)
-        self.queue: Queue = eval(self.settings.get("queueType", "Queue"))(self.settings.get("maxQueue", func.settings.max_queue), self.settings.get("duplicateTrack", True), self.get_msg)
+        self.queue: Queue = QUEUE_TYPES.get(self.settings.get("queue_type", "queue").lower())(
+            self.settings.get("max_queue", func.settings.max_queue),
+            self.settings.get("duplicate_track", True), self.get_msg
+        )
 
         self._node = NodePool.get_node()
         self._current: Optional[Track] = None
@@ -263,7 +266,7 @@ class Player(VoiceProtocol):
 
         If `leave` is True and the channel has three members, the requirement adjusts to 2 votes.
         """
-        if self.settings.get('votedisable'):
+        if self.settings.get('disabled_vote'):
             return 0
 
         required = ceil((len(self.channel.members) - 1) / 2.5)
@@ -302,9 +305,9 @@ class Player(VoiceProtocol):
     def build_embed(self, current_track: Track = None):
         """Builds an embed based on the current track state."""
         controller = self.settings.get("default_controller", func.settings.controller).get("embeds", {})
-        raw = controller.get("active" if current_track else "inactive", {})
+        embed_form = controller.get("active" if current_track else "inactive", {})
         
-        return build_embed(raw, self._ph)
+        return build_embed(embed_form, self._ph)
 
     async def send(self, method: RequestMethod, query: str = None, data: Union[Dict, str] = {}) -> Dict:
         """Sends an HTTP request to the node with the given method, query, and data."""
@@ -452,19 +455,19 @@ class Player(VoiceProtocol):
                 if request_channel_data := self.settings.get("music_request_channel"):
                     channel = self.bot.get_channel(request_channel_data.get("text_channel_id"))
                     if channel:
-                        self.controller = channel.get_partial_message(request_channel_data.get("controller_msg_id"))
                         try:
+                            self.controller = await channel.fetch_message(request_channel_data.get("controller_msg_id"))
                             await self.controller.edit(embed=embed, view=view)
                         except errors.NotFound:
                             self.controller = None
                 
                 # Send a new controller message if none exists
                 if not self.controller:
-                    self.controller = await self.context.channel.send(embed=embed, view=view)
+                    self.controller = await func.send(self.context, content=embed, view=view, requires_fetch=True)
 
             elif not await self.is_position_fresh():
                 await self.controller.delete()
-                self.controller = await self.context.channel.send(embed=embed, view=view)
+                self.controller = await func.send(self.context, content=embed, view=view, requires_fetch=True)
 
             else:
                 await self.controller.edit(embed=embed, view=view)
@@ -493,8 +496,8 @@ class Player(VoiceProtocol):
         """Cleans up the player and associated resources."""
         try:
             await func.update_settings(self.guild.id, {"$set": {
-                "lastActice": (timeNow := round(time.time())), 
-                "playTime": round(self.settings.get("playTime", 0) + ((timeNow - self.joinTime) / 60), 2)
+                "last_active": (timeNow := round(time.time())), 
+                "played_time": round(self.settings.get("played_time", 0) + ((timeNow - self.joinTime) / 60), 2)
             }})
             
             if self.is_ipc_connected:
@@ -711,7 +714,7 @@ class Player(VoiceProtocol):
             await self.send_ws({
                 "op": "shuffleTrack",
                 "tracks": [{"trackId": track.track_id, "requesterId": str(track.requester.id)} for track in replacement],
-                "queueType": queue_type
+                "queue_type": queue_type
             }, requester)
         
         self._logger.debug(f"Player in {self.guild.name}({self.guild.id}) has been shuffled the queue.")
@@ -757,7 +760,7 @@ class Player(VoiceProtocol):
         try:
             self._filters.add_filter(filter=filter)
         except FilterTagAlreadyInUse:
-            raise FilterTagAlreadyInUse(self.get_msg("FilterTagAlreadyInUse"))
+            raise FilterTagAlreadyInUse(self.get_msg("filterTagAlreadyInUse"))
         
         payload = self._filters.get_all_payloads()
         await self.send(method=RequestMethod.PATCH, data={"filters": payload})

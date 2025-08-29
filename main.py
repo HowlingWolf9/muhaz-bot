@@ -238,13 +238,51 @@ async def handle(request):
         func.logger.error(f"Webserver status check failed: {e}", exc_info=True)
         return web.Response(text=f"❌ Error checking bot status: {str(e)}")
 
+
 async def handle_logs(request):
+    # Serve an HTML page that fetches logs and updates every 10s
+    html = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Bot Logs</title>
+        <style>
+            body { font-family: monospace; background: #111; color: #0f0; padding: 10px; }
+            pre { white-space: pre-wrap; }
+        </style>
+    </head>
+    <body>
+        <h1>Bot Logs (updates every 10s)</h1>
+        <pre id="logs">Loading...</pre>
+
+        <script>
+            async function fetchLogs() {
+                try {
+                    let res = await fetch('/raw_logs');
+                    let text = await res.text();
+                    let pre = document.getElementById('logs');
+                    pre.textContent = text;
+                    pre.scrollTop = pre.scrollHeight; // auto-scroll to bottom
+                } catch (e) {
+                    document.getElementById('logs').textContent = "❌ Error fetching logs";
+                }
+            }
+            setInterval(fetchLogs, 10000); // every 10s
+            fetchLogs(); // initial load
+        </script>
+    </body>
+    </html>
+    """
+    return web.Response(text=html, content_type="text/html")
+
+
+async def handle_raw_logs(request):
     try:
-        log_path = Path("./logs/vocard.log")  # Adjust path if different
+        log_path = Path("./logs/vocard.log")  # adjust path if needed
         if not log_path.exists():
             return web.Response(text="⚠️ No log file found yet.")
 
-        # Only show last N lines to avoid huge responses
+        # Only show last N lines
         N = 100
         with log_path.open("r", encoding="utf-8") as f:
             lines = f.readlines()[-N:]
@@ -254,12 +292,14 @@ async def handle_logs(request):
         func.logger.error(f"Error reading logs: {e}", exc_info=True)
         return web.Response(text=f"❌ Error reading logs: {str(e)}")
 
+
 async def start_web_server():
     port = int(os.environ.get("PORT", 10000))
     app = web.Application()
     app.add_routes([
         web.get("/", handle),
-        web.get("/logs", handle_logs)   # New endpoint for logs
+        web.get("/logs", handle_logs),       # HTML page auto-refresh
+        web.get("/raw_logs", handle_raw_logs)  # raw logs for JS
     ])
     runner = web.AppRunner(app)
     await runner.setup()

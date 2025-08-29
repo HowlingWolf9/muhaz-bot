@@ -150,14 +150,16 @@
     "volume": "音量",
     "Set the player's volume.": "設置播放器的音量。",
     "Input a integer.": "輸入一個整數。",
-    "togglecontroller": "切換控制器",
+    "toggleController": "切換控制器",
     "Toggles the music controller.": "切換音樂控制器。",
     "duplicatetrack": "重複歌曲",
     "Toggle Vocard to prevent duplicate songs from queuing.": "切換 Vocard 以防止重複歌曲加入隊列。",
     "customcontroller": "自定義控制器",
     "Customizes music controller embeds.": "自定義音樂控制器嵌入。",
     "controllermsg": "控制器訊息",
+    "silentmsg": "靜默訊息",
     "Toggles to send a message when clicking the button in the music controller.": "切換發送訊息當點擊音樂控制器中的按鈕。",
+    "Toggle silent messaging to send discreet messages without alerting recipients.": "切換靜默消息以發送不會提醒收件人的私密消息。",
     "debug": "除錯",
     "speed": "速度",
     "Sets the player's playback speed": "設置播放器的播放速度。",
@@ -227,5 +229,7 @@
     "dj": "dj",
     "247": "247",
     "stageannounce": "舞台公告",
-    "Soundcloud": "Soundcloud"
+    "Soundcloud": "Soundcloud",
+    "Fairqueue": "公平隊列",
+    "togglecontroller": "切換控制器"
 }

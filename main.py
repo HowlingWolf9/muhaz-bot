@@ -1,24 +1,6 @@
 """MIT License
-
 Copyright (c) 2023 - present Vocard Development
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+...
 """
 
 import discord
@@ -39,11 +21,10 @@ from addons import Settings
 import json
 import asyncio
 from aiohttp import web
-
 from keep_alive import keep_alive
 
 # -------------------------------
-# Load settings.json and replace ${ENV_VAR}
+# Load settings.json with ${ENV_VAR}
 # -------------------------------
 def load_settings(path: str):
     with open(path, "r", encoding="utf-8") as f:
@@ -66,9 +47,8 @@ def load_settings(path: str):
     return replace_env(data)
 
 func.settings = Settings(load_settings("settings.json"))
-
-
 keep_alive()
+
 # -------------------------------
 # Setup logging
 # -------------------------------
@@ -99,22 +79,34 @@ for log_name, log_level in LOG_SETTINGS.get("level", {}).items():
 # Translator
 # -------------------------------
 class Translator(discord.app_commands.Translator):
-    async def load(self):
-        func.logger.info("Loaded Translator")
-
-    async def unload(self):
-        func.logger.info("Unload Translator")
+    async def load(self): func.logger.info("Loaded Translator")
+    async def unload(self): func.logger.info("Unload Translator")
 
     async def translate(self, string: discord.app_commands.locale_str, locale: discord.Locale, context: discord.app_commands.TranslationContext):
         locale_key = str(locale)
         if locale_key in func.LOCAL_LANGS:
             translated_text = func.LOCAL_LANGS[locale_key].get(string.message)
             if translated_text is None:
-                missing_translations = func.MISSING_TRANSLATOR.setdefault(locale_key, [])
-                if string.message not in missing_translations:
-                    missing_translations.append(string.message)
+                missing = func.MISSING_TRANSLATOR.setdefault(locale_key, [])
+                if string.message not in missing:
+                    missing.append(string.message)
             return translated_text
         return None
+
+# -------------------------------
+# Command tree check
+# -------------------------------
+class CommandCheck(app_commands.CommandTree):
+    async def interaction_check(self, interaction: discord.Interaction, /) -> bool:
+        if interaction.type == discord.InteractionType.application_command:
+            if not interaction.guild:
+                await interaction.response.send_message("This command can only be used in guilds!")
+                return False
+            channel_perm = interaction.channel.permissions_for(interaction.guild.me)
+            if not channel_perm.read_messages or not channel_perm.send_messages:
+                await interaction.response.send_message("I don't have permission to read or send messages in this channel.")
+                return False
+        return True
 
 # -------------------------------
 # Bot class
@@ -125,13 +117,10 @@ class Vocard(commands.Bot):
         self.ipc: IPCClient
 
     async def on_message(self, message: discord.Message, /) -> None:
-        if message.author.bot or not message.guild:
-            return False
-
+        if message.author.bot or not message.guild: return
         if self.user.id in message.raw_mentions and not message.mention_everyone:
             prefix = await self.command_prefix(self, message)
-            if not prefix:
-                return await message.channel.send("I don't have a bot prefix set.")
+            if not prefix: return await message.channel.send("I don't have a bot prefix set.")
             await message.channel.send(f"My prefix is `{prefix}`")
 
         settings = await func.get_settings(message.guild.id)
@@ -143,8 +132,8 @@ class Vocard(commands.Bot):
                     if message.content:
                         await cmd(ctx, query=message.content)
                     elif message.attachments:
-                        for attachment in message.attachments:
-                            await cmd(ctx, query=attachment.url)
+                        for att in message.attachments:
+                            await cmd(ctx, query=att.url)
                 except Exception as e:
                     await func.send(ctx, str(e), ephemeral=True)
                 finally:
@@ -154,15 +143,13 @@ class Vocard(commands.Bot):
     async def connect_db(self) -> None:
         if not ((db_name := func.settings.mongodb_name) and (db_url := func.settings.mongodb_url)):
             raise Exception("MONGODB_NAME and MONGODB_URL cannot be empty in settings.json")
-
         try:
             func.MONGO_DB = AsyncIOMotorClient(host=db_url)
             await func.MONGO_DB.server_info()
-            func.logger.info(f"Successfully connected to [{db_name}] MongoDB!")
+            func.logger.info(f"Connected to [{db_name}] MongoDB!")
         except Exception as e:
             func.logger.error("Unable to connect to MongoDB!", exc_info=e)
             exit()
-
         func.SETTINGS_DB = func.MONGO_DB[db_name]["Settings"]
         func.USERS_DB = func.MONGO_DB[db_name]["Users"]
 
@@ -181,32 +168,35 @@ class Vocard(commands.Bot):
 
         self.ipc = IPCClient(self, **func.settings.ipc_client)
         if func.settings.ipc_client.get("enable", False):
-            try:
-                await self.ipc.connect()
+            try: await self.ipc.connect()
             except Exception as e:
-                func.logger.error(f"Cannot connect to IPC dashboard! - Reason: {e}")
+                func.logger.error(f"Cannot connect to IPC dashboard! - {e}")
 
         if not func.settings.version or func.settings.version != update.__version__:
             await self.tree.sync()
             func.update_json("settings.json", new_data={"version": update.__version__})
-            for locale_key, values in func.MISSING_TRANSLATOR.items():
-                func.logger.warning(f'Missing translation for "{", ".join(values)}" in "{locale_key}"')
+            for loc, values in func.MISSING_TRANSLATOR.items():
+                func.logger.warning(f'Missing translation for "{", ".join(values)}" in "{loc}"')
 
     async def on_ready(self):
         func.logger.info("------------------")
-        func.logger.info(f"Logged in as {self.user}")
-        func.logger.info(f"Bot ID: {self.user.id}")
-        func.logger.info("------------------")
+        func.logger.info(f"Logged in as {self.user} (ID: {self.user.id})")
         func.logger.info(f"Discord Version: {discord.__version__}")
         func.logger.info(f"Python Version: {sys.version}")
         func.logger.info("------------------")
-
         func.settings.client_id = self.user.id
         func.LOCAL_LANGS.clear()
         func.MISSING_TRANSLATOR.clear()
 
+    async def on_command_error(self, ctx: commands.Context, exception, /) -> None:
+        error = getattr(exception, 'original', exception)
+        if ctx.interaction: error = getattr(error, 'original', error)
+        if isinstance(error, (commands.CommandNotFound, aiohttp.ClientOSError, discord.NotFound)): return
+        try: await ctx.reply(str(error), ephemeral=True)
+        except: pass
+
 # -------------------------------
-# Command prefix
+# Prefix
 # -------------------------------
 async def get_prefix(bot: commands.Bot, message: discord.Message) -> str:
     settings = await func.get_settings(message.guild.id)
@@ -216,7 +206,7 @@ async def get_prefix(bot: commands.Bot, message: discord.Message) -> str:
     return prefix
 
 # -------------------------------
-# Intents and bot instance
+# Intents and bot
 # -------------------------------
 intents = discord.Intents.default()
 intents.message_content = True if func.settings.bot_prefix else False
@@ -226,7 +216,7 @@ intents.voice_states = True
 bot = Vocard(
     command_prefix=get_prefix,
     help_command=None,
-    tree_cls=discord.app_commands.CommandTree,
+    tree_cls=CommandCheck,
     chunk_guilds_at_startup=False,
     activity=discord.Activity(type=discord.ActivityType.listening, name="Starting..."),
     case_insensitive=True,
@@ -234,11 +224,9 @@ bot = Vocard(
 )
 
 # -------------------------------
-# Minimal web server for Render
+# Web server for Render
 # -------------------------------
-async def handle(request):
-    return web.Response(text="Bot is running!")
-
+async def handle(request): return web.Response(text="Bot is running!")
 async def start_web_server():
     port = int(os.environ.get("PORT", 10000))
     app = web.Application()
@@ -250,28 +238,23 @@ async def start_web_server():
     func.logger.info(f"Web server running on port {port}")
 
 # -------------------------------
-# Run bot + web server with auto-restart
+# Run bot + restart loop
 # -------------------------------
 if __name__ == "__main__":
     update.check_version(with_msg=True)
 
     async def main():
         await start_web_server()
-
         while True:
             try:
                 func.logger.info("Starting Discord bot...")
                 await bot.start(func.settings.token)
             except KeyboardInterrupt:
-                func.logger.info("Bot stopped manually.")
-                break
+                func.logger.info("Bot stopped manually."); break
             except Exception as e:
-                func.logger.error(f"Bot crashed with error: {e}", exc_info=True)
-                func.logger.info("Restarting bot in 5 seconds...")
-                await asyncio.sleep(5)
+                func.logger.error(f"Bot crashed: {e}", exc_info=True)
+                func.logger.info("Restarting in 5s..."); await asyncio.sleep(5)
 
-    try:
-        asyncio.run(main())
+    try: asyncio.run(main())
     except Exception as e:
-        func.logger.error(f"Fatal error in main loop: {e}", exc_info=True)
-
+        func.logger.error(f"Fatal error: {e}", exc_info=True)

@@ -166,8 +166,8 @@ def get_lang_non_async(guild_id: int, *keys) -> Union[list[str], str]:
         LANGS[lang] = open_json(os.path.join("langs", f"{lang}.json"))
 
     if len(keys) == 1:
-        return LANGS.get(lang, {}).get(keys[0], "Language pack not found!")
-    return [LANGS.get(lang, {}).get(key, "Language pack not found!") for key in keys]
+        return LANGS.get(lang, {}).get(keys[0], "Not found!")
+    return [LANGS.get(lang, {}).get(key, "Not found!") for key in keys]
 
 def format_bytes(bytes: int, unit: bool = False):
     if bytes <= 1_000_000_000:
@@ -192,7 +192,8 @@ async def send(
     *params,
     view: discord.ui.View = None,
     delete_after: float = None,
-    ephemeral: bool = False
+    ephemeral: bool = False,
+    requires_fetch: bool = False
 ) -> Optional[discord.Message]:
     if content is None:
         content = "No content provided."
@@ -211,20 +212,42 @@ async def send(
         
     # Determine the sending function
     send_func = (
-        ctx.send if isinstance(ctx, commands.Context) else 
-        ctx.response.send_message if not ctx.response.is_done() else 
-        ctx.followup.send
+        ctx.send if isinstance(ctx, commands.Context) else
+        ctx.channel.send if isinstance(ctx, TempCtx) else
+        ctx.followup.send if ctx.response.is_done() else
+        ctx.response.send_message
     )
 
     # Check settings for delete_after duration
     settings = await get_settings(ctx.guild.id)
-    if settings and ctx.channel.id == settings.get("music_request_channel", {}).get("text_channel_id"):
-        delete_after = 10
+    send_kwargs = {
+        "content": text,
+        "embed": embed,
+        "allowed_mentions": ALLOWED_MENTIONS,
+        "silent": settings.get("silent_msg", False),
+    }
+    
+    if "delete_after" in send_func.__code__.co_varnames:
+        if settings and ctx.channel.id == settings.get("music_request_channel", {}).get("text_channel_id"):
+            delete_after = 10
+        send_kwargs["delete_after"] = delete_after
+    
+    if "ephemeral" in send_func.__code__.co_varnames:
+        send_kwargs["ephemeral"] = ephemeral
+
+    if view:
+        send_kwargs["view"] = view
 
     # Send the message or embed
-    if view:
-        return await send_func(text, embed=embed, view=view, delete_after=delete_after, ephemeral=ephemeral, allowed_mentions=ALLOWED_MENTIONS)
-    return await send_func(text, embed=embed, delete_after=delete_after, ephemeral=ephemeral, allowed_mentions=ALLOWED_MENTIONS)
+    message = await send_func(**send_kwargs)
+
+    if isinstance(message, discord.InteractionCallbackResponse):
+        message = message.resource
+    
+    if requires_fetch and isinstance(message, (discord.WebhookMessage, discord.InteractionMessage)):
+        message = await message.fetch()
+
+    return message
 
 async def update_db(db: AsyncIOMotorCollection, tempStore: dict, filter: dict, data: dict) -> bool:
     for mode, action in data.items():

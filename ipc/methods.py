@@ -12,12 +12,14 @@ RATELIMIT_COUNTER: Dict[int, Dict[str, float]] = {}
 SCOPES = {
     "prefix": str,
     "lang": str,
-    "queueType": str,
+    "queue_type": str,
     "dj": int,
     "controller": bool,
+    "controller_msg": bool,
     "24/7": bool,
-    "votedisable": bool,
-    "duplicateTrack": bool,
+    "disabled_vote": bool,
+    "duplicate_track": bool,
+    "silent_msg": bool,
     "default_controller": dict,
     "stage_announce_template": str
 }
@@ -303,7 +305,7 @@ async def updatePosition(player: Player, member: Member, data: Dict) -> None:
 
 async def toggleAutoplay(player: Player, member: Member, data: Dict) -> Dict:
     if not player.is_privileged(member):
-        return error_msg(player.get_msg('missingPerms_autoplay'))
+        return error_msg(player.get_msg('missingAutoPlayPerm'))
 
     check = data.get("status", False)
     player.settings['autoplay'] = check
@@ -314,7 +316,7 @@ async def toggleAutoplay(player: Player, member: Member, data: Dict) -> Dict:
     return {
         "op": "toggleAutoplay",
         "status": check,
-        "guildId": player.guild.id,
+        "guildId": str(player.guild.id),
         "requesterId": str(member.id)
     }
 

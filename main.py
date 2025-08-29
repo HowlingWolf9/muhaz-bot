@@ -12,6 +12,7 @@ import logging
 import voicelink
 import function as func
 
+from pathlib import Path
 from discord.ext import commands
 from discord import app_commands
 from ipc import IPCClient
@@ -237,15 +238,35 @@ async def handle(request):
         func.logger.error(f"Webserver status check failed: {e}", exc_info=True)
         return web.Response(text=f"❌ Error checking bot status: {str(e)}")
 
+async def handle_logs(request):
+    try:
+        log_path = Path("./logs/vocard.log")  # Adjust path if different
+        if not log_path.exists():
+            return web.Response(text="⚠️ No log file found yet.")
+
+        # Only show last N lines to avoid huge responses
+        N = 100
+        with log_path.open("r", encoding="utf-8") as f:
+            lines = f.readlines()[-N:]
+
+        return web.Response(text="".join(lines), content_type="text/plain")
+    except Exception as e:
+        func.logger.error(f"Error reading logs: {e}", exc_info=True)
+        return web.Response(text=f"❌ Error reading logs: {str(e)}")
+
 async def start_web_server():
     port = int(os.environ.get("PORT", 10000))
     app = web.Application()
-    app.add_routes([web.get("/", handle)])
+    app.add_routes([
+        web.get("/", handle),
+        web.get("/logs", handle_logs)   # New endpoint for logs
+    ])
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
     func.logger.info(f"🌐 Web server running on port {port}")
+
 
 
 # -------------------------------

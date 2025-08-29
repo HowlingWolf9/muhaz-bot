@@ -70,6 +70,10 @@ class Placeholders:
             "server_invite_link": func.settings.invite_link,
             "invite_link": f"https://discord.com/oauth2/authorize?client_id={self.bot.user.id}&permissions=2184260928&scope=bot%20applications.commands"
         }
+
+        self.regexes = {
+            "@@t_(.*?)@@": self.translation
+        }
         
     def get_current(self) -> Track:
         return self.player.current if self.player else None
@@ -152,11 +156,14 @@ class Placeholders:
 
     def bot_icon(self) -> str:
         return self.bot.user.display_avatar.url if self.player else "https://i.imgur.com/dIFBwU7.png"
+    
+    def translation(self, text: str) -> str:
+        return self.player.get_msg(text)
         
     def replace(self, text: str, variables: dict[str, str]) -> str:
         if not text or text.isspace(): return
-        pattern = r"\{\{(.*?)\}\}"
-        matches: list[str] = re.findall(pattern, text)
+
+        matches: list[str] = re.findall(r"\{\{(.*?)\}\}", text)
 
         for match in matches:
             parts: list[str] = match.split("??")
@@ -185,42 +192,44 @@ class Placeholders:
             except:
                 text = text.replace("{{" + match + "}}", "")
 
+        for regex_pattern, func in self.regexes.items():
+            text = re.sub(regex_pattern, lambda m: func(m.group(1)), text)
         text = re.sub(r'@@(.*?)@@', lambda x: str(variables.get(x.group(1), '')), text)
         return text
     
-def build_embed(raw: dict[str, dict], placeholder: Placeholders) -> Embed:
+def build_embed(embed_form: dict[str, dict], placeholder: Placeholders) -> Embed:
     embed = Embed()
     try:
         rv = {key: func() if callable(func) else func for key, func in placeholder.variables.items()}
-        if author := raw.get("author"):
+        if author := embed_form.get("author"):
             embed.set_author(
                 name = placeholder.replace(author.get("name"), rv),
                 url = placeholder.replace(author.get("url"), rv),
                 icon_url = placeholder.replace(author.get("icon_url"), rv)
             )
         
-        if title := raw.get("title"):
+        if title := embed_form.get("title"):
             embed.title = placeholder.replace(title.get("name"), rv)
             embed.url = placeholder.replace(title.get("url"), rv)
 
-        if fields := raw.get("fields", []):
+        if fields := embed_form.get("fields", []):
             for f in fields:
                 embed.add_field(name=placeholder.replace(f.get("name"), rv), value=placeholder.replace(f.get("value", ""), rv), inline=f.get("inline", False))
 
-        if footer := raw.get("footer"):
+        if footer := embed_form.get("footer"):
             embed.set_footer(
                 text = placeholder.replace(footer.get("text"), rv),
                 icon_url = placeholder.replace(footer.get("icon_url"), rv)
             ) 
 
-        if thumbnail := raw.get("thumbnail"):
+        if thumbnail := embed_form.get("thumbnail"):
             embed.set_thumbnail(url = placeholder.replace(thumbnail, rv))
         
-        if image := raw.get("image"):
+        if image := embed_form.get("image"):
             embed.set_image(url = placeholder.replace(image, rv))
 
-        embed.description = placeholder.replace(raw.get("description"), rv)
-        embed.color = int(placeholder.replace(raw.get("color"), rv))
+        embed.description = placeholder.replace(embed_form.get("description"), rv)
+        embed.color = int(placeholder.replace(embed_form.get("color"), rv))
 
     except:
         pass

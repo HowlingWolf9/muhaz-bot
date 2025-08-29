@@ -226,7 +226,17 @@ bot = Vocard(
 # -------------------------------
 # Web server for Render
 # -------------------------------
-async def handle(request): return web.Response(text="Bot is running!")
+async def handle(request):
+    try:
+        if bot.is_ready():
+            return web.Response(text=f"✅ Bot is connected as {bot.user}")
+        else:
+            return web.Response(text="⚠️ Bot is not connected to Discord yet!")
+    except Exception as e:
+        # If something goes wrong even checking status
+        func.logger.error(f"Webserver status check failed: {e}", exc_info=True)
+        return web.Response(text=f"❌ Error checking bot status: {str(e)}")
+
 async def start_web_server():
     port = int(os.environ.get("PORT", 10000))
     app = web.Application()
@@ -235,7 +245,8 @@ async def start_web_server():
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
-    func.logger.info(f"Web server running on port {port}")
+    func.logger.info(f"🌐 Web server running on port {port}")
+
 
 # -------------------------------
 # Run bot + restart loop
